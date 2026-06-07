@@ -96,6 +96,29 @@ describe('InvoicesService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('rejects a discount that pushes the total below zero', async () => {
+    // item 1 x 100 = 100 subtotal; 10% tax = 110 total; discount 500 -> negative
+    await expect(
+      service.create(
+        baseDto({
+          items: [{ name: 'Item', quantity: 1, rate: 100 }],
+          discount: 500,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('allows a discount equal to subtotal plus tax (total exactly 0)', async () => {
+    // item 1 x 100 = 100 subtotal; 10% tax = 110 total; discount 110 -> 0
+    const view = await service.create(
+      baseDto({
+        items: [{ name: 'Item', quantity: 1, rate: 100 }],
+        discount: 110,
+      }),
+    );
+    expect(view.totalAmount).toBe(0);
+  });
+
   it('throws NotFound for a missing invoice', async () => {
     await expect(service.findOne('does-not-exist')).rejects.toBeInstanceOf(
       NotFoundException,

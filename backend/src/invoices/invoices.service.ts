@@ -62,6 +62,14 @@ export class InvoicesService {
       totalPaid,
     });
 
+    // An invoice total can never be negative — a discount larger than the
+    // subtotal + tax would represent a credit note, not an invoice.
+    if (totals.totalAmount < 0) {
+      throw new BadRequestException([
+        'Discount cannot exceed the invoice subtotal plus tax (total must be at least 0)',
+      ]);
+    }
+
     const invoice = this.invoices.create({
       invoiceNumber: dto.invoiceNumber,
       invoiceReference: dto.invoiceReference,

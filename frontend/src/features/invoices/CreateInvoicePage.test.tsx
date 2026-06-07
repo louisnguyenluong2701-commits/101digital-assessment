@@ -64,6 +64,22 @@ describe('CreateInvoicePage', () => {
     expect(createInvoice).not.toHaveBeenCalled();
   });
 
+  it('rejects a discount larger than the total (no API call)', async () => {
+    renderPage();
+    await fillValidForm(); // qty 1 x rate 1000, default tax 10% -> total 1100
+    await userEvent.type(screen.getByLabelText('Invoice date'), '2026-06-03');
+    await userEvent.type(screen.getByLabelText('Due date'), '2026-07-03');
+    await userEvent.clear(screen.getByLabelText('Discount (amount)'));
+    await userEvent.type(screen.getByLabelText('Discount (amount)'), '99999');
+
+    await userEvent.click(screen.getByRole('button', { name: /create invoice/i }));
+
+    expect(
+      await screen.findByText(/discount cannot exceed the subtotal plus tax/i),
+    ).toBeInTheDocument();
+    expect(createInvoice).not.toHaveBeenCalled();
+  });
+
   it('submits a valid invoice and redirects to the list', async () => {
     (createInvoice as ReturnType<typeof vi.fn>).mockResolvedValue({ invoiceId: 'x' });
     renderPage();

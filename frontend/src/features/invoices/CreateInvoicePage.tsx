@@ -67,6 +67,15 @@ export function CreateInvoicePage() {
       return;
     }
 
+    // An invoice total cannot be negative — guard against an over-large discount.
+    // (The backend enforces this too; this gives immediate inline feedback.)
+    if (previewTotal < 0) {
+      setError('discount', {
+        message: 'Discount cannot exceed the subtotal plus tax',
+      });
+      return;
+    }
+
     const payload: CreateInvoicePayload = {
       customerFullname: v.customerFullname,
       customerEmail: v.customerEmail,

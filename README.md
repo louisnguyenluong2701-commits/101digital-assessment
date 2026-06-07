@@ -43,6 +43,10 @@ simple-invoice/
 
 ## Quick start (with Docker) — recommended
 
+Docker is the easiest way to run the full stack: it provisions the database, backend, and frontend together with no local Node.js or PostgreSQL setup. (To run without Docker, see [Running locally](#running-locally-without-docker) below.)
+
+**Prerequisite:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose v2).
+
 All commands below are run from the **project root** (the directory containing `docker-compose.yml` — i.e. this repository).
 
 Bring up the database, backend, and frontend with a single command:
@@ -100,7 +104,7 @@ These can be overridden via `SEED_USER_EMAIL` / `SEED_USER_PASSWORD` (see `.env.
 
 ### 1. Database
 
-Create a database and user (matching the values you'll put in `.env`):
+Create a database and user (matching the values you'll put in `backend/.env`):
 
 ```sql
 CREATE DATABASE simpleinvoice;
@@ -114,11 +118,14 @@ GRANT ALL PRIVILEGES ON DATABASE simpleinvoice TO simpleinvoice;
 
 ```bash
 cd backend
-cp .env.example .env          # adjust DB_* and JWT_SECRET as needed
+cp .env.example .env          # already has DB_HOST=localhost, DB_PORT, user, pass, name
 npm install
 npm run seed                  # creates the admin user + ~36 invoices
 npm run start:dev             # http://localhost:3000  (docs at /api/docs)
 ```
+
+> The database connection comes from the individual `DB_*` vars in `backend/.env`
+> (`DB_HOST` defaults to `localhost`) — there is no single `DATABASE_URL`.
 
 ### 3. Frontend
 
@@ -140,7 +147,7 @@ npm run dev                   # http://localhost:5173
 # Docker
 docker compose exec backend npm run seed
 
-# Local
+# Local (without Docker)
 cd backend && npm run seed
 ```
 
@@ -220,6 +227,7 @@ Covers the login flow (validation, success redirect, server error), the status b
 - **Customer is embedded** on the invoice table (the spec permits either embedded or a separate table). Chosen for simplicity given the one-customer-per-invoice model. The API still nests customer data under a `customer` object, so normalizing later wouldn't change the public contract.
 - **Line items are a separate table** with a FK to the invoice. Exactly one item is required per the assessment, but the schema and API (`items: [...]`) already support multiple.
 - **`discount` is a flat amount** (not a percentage), consistent with the `totalAmount = subTotal + taxAmount − discount` formula. **`tax` is a percentage**, defaulting to 10.
+- **Invoice total cannot be negative.** A discount greater than `subtotal + tax` is rejected (`400`) — a negative total would represent a credit note, which is a separate concept from an invoice. Enforced server-side and mirrored in the create form.
 - **Status filtering is applied against the *derived* status.** Filtering `Pending` returns invoices that are Pending *and* not past due; a past-due Pending invoice appears under `Overdue`. This keeps the list consistent with the badges shown.
 - **`DB_SYNCHRONIZE=true`** is used so the schema is created automatically from entities — convenient for review. In production this would be replaced by explicit migrations.
 - **JWT expiry** is configurable via `JWT_EXPIRES_IN` (seconds), defaulting to `3600`.
