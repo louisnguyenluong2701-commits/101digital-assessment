@@ -1,0 +1,63 @@
+# SimpleInvoice — full stack in a single command:
+#   docker compose up --build
+#
+# Services:
+#   postgres  -> :5432  (database)
+#   backend   -> :3000  (NestJS API, Swagger at /api/docs)
+#   frontend  -> :8080  (React SPA served by nginx)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-simpleinvoice}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-simpleinvoice}
+      POSTGRES_DB: ${DB_NAME:-simpleinvoice}
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-simpleinvoice}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-simpleinvoice}
+      DB_PASSWORD: ${DB_PASSWORD:-simpleinvoice}
+      DB_NAME: ${DB_NAME:-simpleinvoice}
+      DB_SYNCHRONIZE: 'true'
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-3600}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      SEED_USER_EMAIL: ${SEED_USER_EMAIL:-admin@101digital.io}
+      # $$ escapes to a literal $ so the password is exactly: $Abc1234
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:-$$Abc1234}
+      SEED_USER_FULLNAME: ${SEED_USER_FULLNAME:-Admin}
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # The browser reaches the backend via the host-published port.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
+    ports:
+      - '8080:80'
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
