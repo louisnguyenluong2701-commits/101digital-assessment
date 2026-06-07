@@ -73,6 +73,13 @@ Tear down (and wipe the database volume):
 docker compose down -v
 ```
 
+> **Working on the code?** Docker installs dependencies *inside the containers*, not on your host, so a fresh clone has no local `node_modules`. To edit in an IDE (so TypeScript resolves imports) or to run tests locally, install dependencies once:
+>
+> ```bash
+> cd backend && npm install
+> cd ../frontend && npm install
+> ```
+
 ---
 
 ## Default login credentials (for reviewer access)
